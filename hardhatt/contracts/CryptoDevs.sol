@@ -41,8 +41,8 @@ contract CryptoDevs is ERC721Enumerable, Ownable {
     }
 
     function presaleMint() public payable onlyWhenNotPaused {
-        require(presaleStarted && block.timestamp < presaleEnded, "Presale Ended");
-        require(whitelist.whitelistedAddresses(msg.sender), "You are not in whitelist");
+        require(presaleStarted && block.timestamp < presaleEnded, "Presale is not running");
+        require(whitelist.whitelistedAddresses(msg.sender), "You are not in whitelisted");
         require(tokenIds < maxTokenIds, "Exceeded the limit");
         require(msg.value >= _presalePrice, "Ether sent is not correct");
 
@@ -62,7 +62,7 @@ contract CryptoDevs is ERC721Enumerable, Ownable {
         _safeMint(msg.sender, tokenIds);
     }
 
-    function _baseURI() internal view override  returns(string memory){
+    function _baseURI() internal view virtual override returns(string memory){
         return _baseTokenURI;
     }
 
