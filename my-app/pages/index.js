@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Web3Modal from "web3modal";
 import { abi, NFT_CONTRACT_ADDRESS } from "../constants";
 import styles from "../styles/Home.module.css";
-
+import Image from "next/image"
 export default function Home(){
 
     const [walletConnected, setWalletConnected] = useState(false);
@@ -66,60 +66,6 @@ export default function Home(){
             console.error(err);
         }
     }
-
-    // const pauseContract = async () =>{
-    //     try{
-    //         const signer = await getProviderOrSigner(true);
-
-    //         const nftContract = new Contract(
-    //             NFT_CONTRACT_ADDRESS,
-    //             abi,
-    //             signer
-    //         )
-
-    //         const transac = nftContract.setPaused(true);
-    //         setLoading(true);
-    //         await transac.wait();
-    //         setLoading(false);
-
-    //     }catch(err){
-    //         console.error(err)
-    //     }
-    // }
-
-    useEffect(()=>{
-        if(!walletConnected){
-            web3ModalRef.current = new Web3Modal({
-                network: "goerli",
-                providerOptions:{},
-                disableInjectedProvider:false,
-            })
-            connectWallet();
-
-            const _presaleStarted = checkIfPresaleStarted();
-            if(_presaleStarted){
-                checkIfPresaleEnded();
-            }
-
-            getTokenIdsMinted();
-
-            //interval to check if presale ended
-            const presaleEndedInterval = setInterval(async () => {
-                const _presaleStarted = await checkIfPresaleStarted();
-                if(_presaleStarted){
-                    const _presaleEnded = await checkIfPresaleEnded();
-                    if(_presaleEnded){
-                        clearInterval(presaleEndedInterval);
-                    }
-                }
-            }, 5* 1000);
-
-            //interval to get no of token ids minted
-            setInterval(async ()=>{
-                await getTokenIdsMinted();
-            }, 5 * 1000) 
-        }
-    },[walletConnected])
 
     const checkIfPresaleStarted = async() =>{
         try{
@@ -250,6 +196,60 @@ export default function Home(){
         }
     }
 
+    // const pauseContract = async () =>{
+    //     try{
+    //         const signer = await getProviderOrSigner(true);
+
+    //         const nftContract = new Contract(
+    //             NFT_CONTRACT_ADDRESS,
+    //             abi,
+    //             signer
+    //         )
+
+    //         const transac = nftContract.setPaused(true);
+    //         setLoading(true);
+    //         await transac.wait();
+    //         setLoading(false);
+
+    //     }catch(err){
+    //         console.error(err)
+    //     }
+    // }
+
+    useEffect(()=>{
+        if(!walletConnected){
+            web3ModalRef.current = new Web3Modal({
+                network: "goerli",
+                providerOptions:{},
+                disableInjectedProvider:false,
+            })
+            connectWallet();
+
+            const _presaleStarted = checkIfPresaleStarted();
+            if(_presaleStarted){
+                checkIfPresaleEnded();
+            }
+
+            getTokenIdsMinted();
+
+            //interval to check if presale ended
+            const presaleEndedInterval = setInterval(async () => {
+                const _presaleStarted = await checkIfPresaleStarted();
+                if(_presaleStarted){
+                    const _presaleEnded = await checkIfPresaleEnded();
+                    if(_presaleEnded){
+                        clearInterval(presaleEndedInterval);
+                    }
+                }
+            }, 5* 1000);
+
+            //interval to get no of token ids minted
+            setInterval(async ()=>{
+                await getTokenIdsMinted();
+            }, 5 * 1000) 
+        }
+    },[walletConnected])
+
     const renderButton = () => {
         if(!walletConnected){
             return (
@@ -277,7 +277,7 @@ export default function Home(){
 
         if(!presaleStarted){
             return (
-                <p className={styles.description}>Presale hasn't Started</p>
+                <p className={styles.description}>Presale hasn&apos;t Started</p>
             )
         }
 
@@ -321,7 +321,7 @@ export default function Home(){
                     Welcome to Crypto Devs!!
                 </h1>
                 <div className={styles.description}>
-                    It's an NFT collection for developers in Crypto
+                    It&apos;s an NFT collection for developers in Crypto
                 </div>
                 <div className={styles.description}>
                     {tokenIdsMinted}/20 have been minted
@@ -334,7 +334,7 @@ export default function Home(){
                 } */}
             </div>
             <div>
-                <img className={styles.image} src="./cryptodevs/0.svg"/>
+                <Image className={styles.image} src="./cryptodevs/0.svg" alt="Crypto Devs"/>
             </div>
 
             <footer className={styles.footer}>
