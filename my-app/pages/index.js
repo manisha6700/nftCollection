@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import Web3Modal from "web3modal";
 import { abi, NFT_CONTRACT_ADDRESS } from "../constants";
 import styles from "../styles/Home.module.css";
-import Image from "next/image"
 export default function Home(){
 
     const [walletConnected, setWalletConnected] = useState(false);
@@ -334,7 +333,7 @@ export default function Home(){
                 } */}
             </div>
             <div>
-                <Image className={styles.image} src="./cryptodevs/0.svg" alt="Crypto Devs"/>
+                <img className={styles.image} src="./cryptodevs/0.svg" alt="Crypto Devs" />
             </div>
 
             <footer className={styles.footer}>
