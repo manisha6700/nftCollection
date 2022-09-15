@@ -52,7 +52,7 @@ export default function Home(){
                 provider
             )
 
-            const _owner = nftContract.owner();
+            const _owner = await nftContract.owner();
 
             const signer = await getProviderOrSigner(true);
 
@@ -119,7 +119,7 @@ export default function Home(){
                 signer
             )
 
-            const transac = nftContract.startPresale();
+            const transac = await nftContract.startPresale();
             setLoading(true);
             await transac.wait();
             setLoading(false);
@@ -159,7 +159,7 @@ export default function Home(){
                 signer
             )
 
-            const transac = nftContract.presaleMint({
+            const transac = await nftContract.presaleMint({
                 value:utils.parseEther("0.0005")
             });
             setLoading(true);
@@ -182,7 +182,7 @@ export default function Home(){
                 signer
             )
 
-            const transac = nftContract.mint({
+            const transac = await nftContract.mint({
                 value:utils.parseEther("0.001")
             });
             setLoading(true);
