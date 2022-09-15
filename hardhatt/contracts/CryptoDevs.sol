@@ -1,88 +1,345 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+import { Contract, providers, utils } from "ethers";
+import Head from "next/head";
+import React, { useEffect, useRef, useState } from "react";
+import Web3Modal from "web3modal";
+import { abi, NFT_CONTRACT_ADDRESS } from "../constants";
+import styles from "../styles/Home.module.css";
 
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "./IWhitelist.sol";
+export default function Try(){
 
-contract CryptoDevs is ERC721Enumerable, Ownable {
+    const [walletConnected, setWalletConnected] = useState(false);
+    const [presaleStarted, setPresaleStarted] = useState(false);
+    const [presaleEnded, setPresaleEnded] = useState(false);
+    const [isOwner, setIsOwner] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [tokenIdsMinted, setTokenIdsMinted] = useState("0");
 
-    string _baseTokenURI;
+    const web3ModalRef = useRef();
+    
+    const getProviderOrSigner = async(needSigner = false) =>{
+        const provider = await web3ModalRef.current.connect();
+        const web3Provider = new providers.Web3Provider(provider);
 
-    bool public presaleStarted;
+        //connect to goerli network
+        const {chainId} = await web3Provider.getNetwork();
+        if(chainId !== 5){
+            window.alert("Change the network to Goerli")
+            throw new Error("Change network to Goerli")
+        }
 
-    uint256 public presaleEnded;
+        if(needSigner){
+            const signer = web3Provider.getSigner();
+            return signer;
+        }
 
-    uint256 public maxTokenIds = 20;
-
-    uint256 public tokenIds;
-
-    uint256 public _publicPrice = 0.001 ether;
-    uint256 public _presalePrice = 0.0005 ether;
-
-    bool public _paused;
-
-    modifier onlyWhenNotPaused {
-        require(!_paused, "Contract currently Paused");
-        _;
-        //this says whatever is there in the rest of the contract u can execute that
+        return web3Provider;
     }
 
-    IWhitelist whitelist;
-
-    constructor(string memory baseURI, address whitelistContarct) ERC721("Crypro Devs", "CD"){
-        _baseTokenURI = baseURI;
-        whitelist = IWhitelist(whitelistContarct);
+    const connectWallet = async() =>{
+        try{
+            await getProviderOrSigner();
+            setWalletConnected(true);
+        }catch(err){
+            console.error(err);
+        }
     }
 
-    function startPresale() public onlyOwner {
-        presaleStarted = true;
-        presaleEnded = block.timestamp + 5 minutes;
+    const getOwner = async () =>{
+        try{
+            const provider = await getProviderOrSigner();
+            const nftContract =  new Contract(
+                NFT_CONTRACT_ADDRESS,
+                abi,
+                provider
+            )
+
+            const _owner = nftContract.owner();
+
+            const signer = await getProviderOrSigner(true);
+
+            const address = await signer.getAddress();
+            if(address.toLowerCase() === _owner.toLowerCase){
+                setIsOwner(true);
+            }
+
+        }catch(err){
+            console.error(err);
+        }
     }
 
-    function presaleMint() public payable onlyWhenNotPaused {
-        require(presaleStarted && block.timestamp < presaleEnded, "Presale is not running");
-        require(whitelist.whitelistedAddresses(msg.sender), "You are not in whitelisted");
-        require(tokenIds < maxTokenIds, "Exceeded the limit");
-        require(msg.value >= _presalePrice, "Ether sent is not correct");
+    // const pauseContract = async () =>{
+    //     try{
+    //         const signer = await getProviderOrSigner(true);
 
-        tokenIds += 1;
+    //         const nftContract = new Contract(
+    //             NFT_CONTRACT_ADDRESS,
+    //             abi,
+    //             signer
+    //         )
 
-        //it's checking if the address is not null and tokenid already exists then assigns
-        _safeMint(msg.sender, tokenIds);
+    //         const transac = nftContract.setPaused(true);
+    //         setLoading(true);
+    //         await transac.wait();
+    //         setLoading(false);
+
+    //     }catch(err){
+    //         console.error(err)
+    //     }
+    // }
+
+    useEffect(()=>{
+        if(!walletConnected){
+            web3ModalRef.current = new Web3Modal({
+                network: "goerli",
+                providerOptions:{},
+                disableInjectedProvider:false,
+            })
+            connectWallet();
+
+            const _presaleStarted = checkIfPresaleStarted();
+            if(_presaleStarted){
+                checkIfPresaleEnded();
+            }
+
+            getTokenIdsMinted();
+
+            //interval to check if presale ended
+            const presaleEndedInterval = setInterval(async () => {
+                const _presaleStarted = await checkIfPresaleStarted();
+                if(_presaleStarted){
+                    const _presaleEnded = await checkIfPresaleEnded();
+                    if(_presaleEnded){
+                        clearInterval(presaleEndedInterval);
+                    }
+                }
+            }, 5* 1000);
+
+            //interval to get no of token ids minted
+            setInterval(async ()=>{
+                await getTokenIdsMinted();
+            }, 5 * 1000) 
+        }
+    },[walletConnected])
+
+    const checkIfPresaleStarted = async() =>{
+        try{
+            const provider = await getProviderOrSigner();
+
+            const nftContract = new Contract(
+                NFT_CONTRACT_ADDRESS,
+                abi,
+                provider
+                );
+
+            const _presaleStarted = await nftContract.presaleStarted();
+            if(!_presaleStarted){
+                await getOwner();
+            }
+            setPresaleStarted(_presaleStarted);
+            return _presaleStarted;
+        }catch(err){
+            console.error(err);
+            return false;
+        }
+    }
+    
+    const checkIfPresaleEnded = async () =>{
+        try{
+            const provider = await getProviderOrSigner();
+
+            const nftContract = new Contract(
+                NFT_CONTRACT_ADDRESS,
+                abi,
+                provider
+                );
+
+            const _presaleEnded = await nftContract.presaleEnded();
+            
+            const hasEnded = _presaleEnded.lt(Math.floor(Date.now()/1000));
+            setPresaleEnded(hasEnded)
+            return hasEnded;
+        }catch(err){
+            console.error(err);
+            return false;
+        }
     }
 
-    function mint() public payable onlyWhenNotPaused {
-        require(presaleStarted && block.timestamp >= presaleEnded, "Presale has not ended yet");
-        require(tokenIds < maxTokenIds, "Exceeded the limit");
-        require(msg.value >= _publicPrice, "Ether sent is not correct");
+    const startPresale = async() =>{
+        try{
+            const signer = await getProviderOrSigner(true);
 
-        tokenIds += 1;
+            const nftContract = new Contract(
+                NFT_CONTRACT_ADDRESS,
+                abi,
+                signer
+            )
 
-        _safeMint(msg.sender, tokenIds);
+            const transac = nftContract.startPresale();
+            setLoading(true);
+            await transac.wait();
+            setLoading(false);
+
+            await checkIfPresaleStarted();
+        }catch(err){
+            console.error(err)
+        }
     }
 
-    function _baseURI() internal view virtual override returns(string memory){
-        return _baseTokenURI;
+    const getTokenIdsMinted = async () =>{
+        try{
+            const provider = await getProviderOrSigner();
+
+            const nftContract = new Contract(
+                NFT_CONTRACT_ADDRESS,
+                abi,
+                provider
+                );
+
+            const _tokenId = await nftContract.tokenIds();
+
+            setTokenIdsMinted(_tokenId.toString());
+
+        }catch(err){
+            console.error(err)
+        }
     }
 
-    function setPaused(bool val) public onlyOwner {
-        _paused = val;
+    const presaleMint = async () =>{
+        try{
+            const signer = await getProviderOrSigner(true);
+
+            const nftContract = new Contract(
+                NFT_CONTRACT_ADDRESS,
+                abi,
+                signer
+            )
+
+            const transac = nftContract.presaleMint({
+                value:utils.parseEther("0.0005")
+            });
+            setLoading(true);
+            await transac.wait();
+            setLoading(false);
+
+            window.alert("Yayyy!!! You have successfully minted a Crypto Dev!!")
+        }catch(err){
+            console.error(err)
+        }
     }
 
-    function withdraw() public onlyOwner {
-        address _owner = owner();
-        uint256 amount = address(this).balance;
-        (bool sent,) = _owner.call{value: amount}("");
-        //the second parametr is for data and now we don't need to send any data
-        require(sent, "Failed to send Ether");
+    const publicMint = async () =>{
+        try{
+            const signer = await getProviderOrSigner(true);
+
+            const nftContract = new Contract(
+                NFT_CONTRACT_ADDRESS,
+                abi,
+                signer
+            )
+
+            const transac = nftContract.mint({
+                value:utils.parseEther("0.001")
+            });
+            setLoading(true);
+            await transac.wait();
+            setLoading(false);
+
+            window.alert("Yayyy!!! You have successfully minted a Crypto Dev!!")
+        }catch(err){
+            console.error(err)
+        }
     }
 
-    //receive and fallback functions are required if the contract is receiving ethers
-    //receive is called when msg.data is empty i.e., we r sending ethers and not sending any data
-    receive() external payable{}
-    //fallback is called when msg.data is not empty
-    fallback() external payable{}
+    const renderButton = () => {
+        if(!walletConnected){
+            return (
+                <button onClick={connectWallet} className={styles.button}>
+                    Connect Wallet!!
+                </button>
+            )
+        }
 
+        if(loading){
+            return (
+                <button disabled className={styles.button}>
+                    Loading...
+                </button>
+            )
+        }
 
+        if(isOwner && !presaleStarted){
+            return (
+                <button onClick={startPresale} className={styles.button}>
+                    Start Presale
+                </button>
+            )
+        }
+
+        if(!presaleStarted){
+            return (
+                <p className={styles.description}>Presale hasn't Started</p>
+            )
+        }
+
+        if(presaleStarted && !presaleEnded){
+            return(
+                <div>
+                  <div className={styles.description}>
+                    Presale has started!!! If your address is whitelisted, Mint a
+                    Crypto Dev 🥳
+                  </div>
+                  <button className={styles.button} onClick={presaleMint}>
+                    Presale Mint 🚀
+                  </button>
+                </div>
+            )
+        }
+
+        if(presaleStarted && presaleEnded){
+            return(
+                <button onClick={publicMint} className={styles.button}>
+                    Public Mint 🚀
+                </button>
+            )
+        }
+
+    }
+
+    return (
+        <div>
+            <Head>
+                <title>Crypto Devs</title>
+                <meta name="description" content="Whitelist-dApp"/>
+                <link rel="icon" href="/favicon.ico"/>
+            </Head>
+
+            <div>
+
+            </div>
+            <div>
+                <h1 className={styles.title}>
+                    Welcome to Crypto Devs!!
+                </h1>
+                <div className={styles.description}>
+                    It's an NFT collection for developers in Crypto
+                </div>
+                <div className={styles.description}>
+                    {tokenIdsMinted}/20 have been minted
+                </div>
+                {renderButton()}
+                {/* {isOwner &&
+                    <button onClick={pauseContract} className={styles.button}>
+                        Pause Contract
+                    </button>
+                } */}
+            </div>
+            <div>
+                <img className={styles.image} src="./cryptodevs/0.svg"/>
+            </div>
+
+            <footer className={styles.footer}>
+                Made with &#10084; by Crypto Devs
+            </footer>
+        </div>
+    )
 }
