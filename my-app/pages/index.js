@@ -57,7 +57,7 @@ export default function Home(){
             const signer = await getProviderOrSigner(true);
 
             const address = await signer.getAddress();
-            if(address.toLowerCase() === _owner.toLowerCase){
+            if(address.toLowerCase() === _owner.toLowerCase()){
                 setIsOwner(true);
             }
 
